@@ -1,0 +1,4 @@
+# Project dependencies for development
+pytest
+coveralls
+pylint
