@@ -1,7 +1,7 @@
 node('docker') {
 
     stage('Checkout') {
-        git 'https://git.ercpe.de/ercpe/smart-check.git'
+        git 'https://git.ercpe.de/ercpe/docker-hosts.git'
     }
 
     stage('CI') {
