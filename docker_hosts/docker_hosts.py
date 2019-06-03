@@ -167,7 +167,7 @@ class DockerHosts(object):
             del self.containers[container_id]['networks'][network_name]
 
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser()
     parser.add_argument('-f', '--hosts-file', default="/etc/hosts", help="the hosts-style file to write to (default: %(default)s)")
     parser.add_argument('-p', '--pattern', default="{hostname}.{network}.local", help="the host entry pattern (default: %(default)s)")
@@ -184,3 +184,7 @@ if __name__ == "__main__":
                 hosts_file=args.hosts_file,
                 pattern=args.pattern)
     c.run()
+
+
+if __name__ == "__main__":
+    main()
