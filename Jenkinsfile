@@ -6,7 +6,7 @@ node('docker') {
 
     stage('CI') {
         docker.withRegistry('https://r.ercpe.de', 'docker-registry') {
-            docker.image('r.ercpe.de/ercpe/python-build:latest').inside {
+            docker.image('r.ercpe.de/ercpe/ubuntu-build:latest').inside {
                 sh "make clean jenkins"
             }
         }
@@ -14,7 +14,7 @@ node('docker') {
 
     stage('Package') {
         docker.withRegistry('https://r.ercpe.de', 'docker-registry') {
-            docker.image('r.ercpe.de/ercpe/python-build:latest').inside {
+            docker.image('r.ercpe.de/ercpe/ubuntu-build:latest').inside {
                 sh "make clean deb"
             }
         }
