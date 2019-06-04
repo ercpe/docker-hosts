@@ -5,11 +5,11 @@ test:
 
 compile:
 	@echo Compiling python code
-	python -m compileall .
+	python3 -m compileall .
 
 compile_optimized:
 	@echo Compiling python code optimized
-	python -O -m compileall .
+	python3 -O -m compileall .
 
 #coverage:
 #	coverage erase
