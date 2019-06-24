@@ -11,12 +11,6 @@ compile_optimized:
 	@echo Compiling python code optimized
 	python3 -O -m compileall .
 
-#coverage:
-#	coverage erase
-#	PYTHONPATH="." coverage run --source='.' --omit 'tests/*,setup.py' --branch tests/__main__.py
-#	coverage xml -i
-#	coverage report -m
-
 clean:
 	find -name "*.py?" -delete
 	rm -rf MANIFEST *.egg-info dist deb_dist *.tar.gz
