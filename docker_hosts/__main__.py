@@ -22,7 +22,18 @@ def main():
                 network_filter=args.network_filter,
                 hosts_file=args.hosts_file,
                 pattern=args.pattern)
-    c.run()
+    
+    def _stop():
+        if c and c.client:
+            c.client.close()
+    
+    try:
+        c.run()
+        _stop()
+    except BaseException as ex:
+        _stop()
+        if not isinstance(ex, KeyboardInterrupt):
+            raise
 
 
 if __name__ == "__main__":
