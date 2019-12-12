@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
-from argparse import ArgumentParser
+import logging
 
 import daiquiri
 import docker
-import logging
-
 from python_hosts import Hosts, HostsEntry
 
 daiquiri.setup(level=logging.WARNING)
@@ -75,16 +73,18 @@ class DockerHosts(object):
         def _gen_entries():
             for network_name, network_address in current_config.get('networks', {}).items():
                 name = _fmt(name=current_config['name'], hostname=current_config['hostname'], network=network_name)
-                logger.debug("Adding host entry %s <> %s", network_address, name)
-                yield HostsEntry(entry_type='ipv4', address=network_address, names=[name])
+                if network_address and network_name:
+                    logger.debug("Adding host entry %s <> %s", network_address, name)
+                    yield HostsEntry(entry_type='ipv4', address=network_address, names=[name])
 
         for cfg in current_config, previous_config:
             if cfg is None:
                 continue
                 
             for _, addr in cfg.get('networks', {}).items():
-                logger.debug("Removing entries matching address: %s", addr)
-                f.remove_all_matching(address=addr)
+                if addr:
+                    logger.debug("Removing entries matching address: %s", addr)
+                    f.remove_all_matching(address=addr)
 
             for network, _ in cfg.get('networks', {}).items():
                 name = _fmt(name=cfg['name'], hostname=cfg['hostname'], network=network)
@@ -165,26 +165,3 @@ class DockerHosts(object):
         logger.info("Container %s disconnected from network %s", container_id, network_name)
         if network_name in self.containers[container_id]['networks']:
             del self.containers[container_id]['networks'][network_name]
-
-
-def main():
-    parser = ArgumentParser()
-    parser.add_argument('-f', '--hosts-file', default="/etc/hosts", help="the hosts-style file to write to (default: %(default)s)")
-    parser.add_argument('-p', '--pattern', default="{hostname}.{network}.local", help="the host entry pattern (default: %(default)s)")
-    parser.add_argument('--container-filter', type=str, nargs='*')
-    parser.add_argument('--network-filter', type=str, nargs='*')
-    parser.add_argument('-v', '--verbose', action='count', help="Increase verbosity (default: %(default)s)", default=3)
-
-    args = parser.parse_args()
-
-    daiquiri.setup(level=40 - ((int(args.verbose) - 1) * 10))
-
-    c = DockerHosts(container_filter=args.container_filter,
-                network_filter=args.network_filter,
-                hosts_file=args.hosts_file,
-                pattern=args.pattern)
-    c.run()
-
-
-if __name__ == "__main__":
-    main()
