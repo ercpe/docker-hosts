@@ -1,0 +1,9 @@
+kind: pipeline
+type: exec
+name: default
+
+steps:
+- name: build docker container
+  commands:
+  - docker build -t r.ercpe.de/ercpe/docker-hosts:latest .
+  - docker push r.ercpe.de/ercpe/docker-hosts:latest
