@@ -26,27 +26,27 @@ class DockerHosts(object):
         self.update_container_info()
 
     def update_container_info(self, container_id=None):
-        
-        query_filters = {'id': container_id} if container_id else None
-
         previous_config = self.containers if container_id is None else self.containers.get(container_id)
 
-        for c in self.client.containers.list(query_filters):
-        
+        for c in self.client.containers.list({'id': container_id} if container_id else None):
             if not self.is_watched_container(c.name):
                 continue
-        
-            logger.debug("Watched container: %s (%s)", c.id, c.name)
+    
+            logger.debug('Watched container: %s (%s)', c.id, c.name)
+            container_hostname = c.attrs.get('Config', {}).get('Hostname', '')
+            if c.id[:len(container_hostname)] == container_hostname:
+                container_hostname = c.attrs.get('Name', '').lstrip('/')
+            
             self.containers[c.id] = {
                 'name': c.name,
-                'hostname': c.attrs.get('Config', {}).get('Hostname', ''),
+                'hostname': container_hostname,
                 'networks': dict([
                     (network_name, network_config.get('IPAddress', None)) for network_name, network_config in
                     c.attrs.get('NetworkSettings', {}).get('Networks', {}).items()
                 ])
             }
             
-        logger.info("Containers:")
+        logger.info('Containers:')
         for cid, vars in self.containers.items():
             logger.info("%s: %s", cid, vars)
         
@@ -103,6 +103,7 @@ class DockerHosts(object):
         return self.network_filter(network_name)
     
     def register_container(self, container_id, container_name):
+        # logger.debug('register_container(%s, %s)', container_id, container_name)
         if container_id not in self.containers:
             logger.debug("Registring new container: %s (%s)", container_name, container_id)
             self.containers[container_id] = {
@@ -119,37 +120,43 @@ class DockerHosts(object):
     def run(self):
         for e in self.client.events():
             data = json.loads(e)
-
-            status = data.get('status', '')
-            cid = data.get('id', '')
+            
             type = data.get('Type', '')
             action = data.get('Action', '')
-            
+            event_object_id = data.get('id', '')
+
             actor = data.get('Actor', {})
             actor_attributes = actor.get('Attributes', {})
-            actor_container_name = actor_attributes.get('name', '')
+            actor_name = actor_attributes.get('name', '')
+            actor_container_id = actor_attributes.get('container', '')
 
-            if status == "create" and self.is_watched_container(actor_container_name):
-                self.register_container(cid, actor_container_name)
-                continue
-
-            if status == "die":
-                self.deregister_container(cid)
-                continue
-
-            if status == "start" and cid in self.containers:
-                self.update_container_info(cid)
+            if type not in ('container', 'network'):
+                logger.info('IGNORING EVENT for %s', type)
                 continue
             
-            container_id = actor_attributes.get('container', '')
-            network_name = actor_attributes.get('name', '')
-            if type == "network" and not self.is_watched_network(network_name):
-                logger.warning("Ignoring (unwatched network '%s'): %s", network_name, data)
+            if type == 'container' and not self.is_watched_container(data.get('id')):
+                logger.info('Ignoring (unwatched) event %s/%s', type, action)
                 continue
             
-            if action == 'connect' or action == 'disconnect':
-                if container_id in self.containers:
-                    self.update_container_info(container_id=container_id)
+            if type == 'network' and not self.is_watched_network(actor_name):
+                logger.info('Ignoring (unwatched) event %s/%s', type, action)
+                continue
+            
+            if type == 'container':
+                if action in ('attach', 'start'):
+                    self.register_container(event_object_id, actor_name)
+                elif action in ('kill', 'die', 'stop'):
+                    self.deregister_container(event_object_id)
+                else:
+                    continue
+            
+            if type == 'network':
+                if action not in ('connect', 'disconnect'):
+                    logger.debug('Ignore network event: %s/%s', type, action)
+                    continue
+            
+            self.update_container_info(actor_container_id or event_object_id)
+            
 
     def container_connected(self, container_id, network_name):
         logger.info("Container %s connected to network %s", container_id, network_name)
